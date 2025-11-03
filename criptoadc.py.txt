@@ -1,0 +1,271 @@
+################# Definições
+import string
+import re
+import time
+start_time = time.perf_counter()
+frase = ""
+dicbinario = {"100000":" ", "100010":"1", "100111":"2", "101101":"3", "101110":"4", "101100":"5", "1000001":"A", "1000010":"B", "1000011":"C", "1000100":"D", "1000101":"E", "1000110":"F", "1000111":"G", "1001000":"H", "1001001":"I", "1001010":"J", "1001011":"K", "1001100":"L", "1001101":"M", "1001110":"N", "1001111":"O", "1010000":"P", "1010001":"Q", "1010010":"R", "1010011":"S", "1010100":"T", "1010101":"U", "1010110":"V", "1010111":"W", "1011000":"X", "1011001":"Y", "1011010":"Z"}
+Dic_Top = "500.txt" 
+Dic_Final = "words_alpha.txt"
+ 
+################# (1) Transformação do binário em letras, realizando separação por letra e palavra
+
+bins = frase.split()
+binario = "".join(dicbinario[b] for b in bins)
+palavras = binario.split()
+letras = [list(palavras) for palavras in binario]
+print("Letras minúsculas = decifradas / Letras maiúsculas = cifradas")
+print("Início da cifra:\n", binario)
+binariosave = binario
+ponteiro = 1
+score = 0
+while score < 0.8 and ponteiro < 7:
+    binario = binariosave
+    letras = [list(palavras) for palavras in binario]
+    letras = [c for c in letras if c != ['']]
+    letra = [c[0] for c in letras]
+    contagem = {}
+    for letr in letra:
+        if letr == ' ':
+            continue
+        if letr not in contagem:
+            contagem[letr] = 1
+        else:
+            contagem[letr] += 1
+    mais_comum = None
+    maior_qtd = 0
+    mapa = {}
+    for letr, qtd in contagem.items():
+        if qtd > maior_qtd:
+            maior_qtd = qtd
+            mais_comum = letr
+            
+################# (2) Identificação da letra mais comum
+    
+    print(ponteiro)
+    for c in letras:
+        if c[0] == mais_comum:
+            if ponteiro == 1:
+                c[0] = 'e'
+                binario = binario.replace(mais_comum, "e")
+                palavras= [d.replace(mais_comum, "e") for d in palavras]
+            if ponteiro == 2:              
+                def mapa_string(s, mapa):
+                    return ''.join(mapa.get(ch, ch) for ch in s)
+                seq = [ch for ch in letra if ch != ' ']
+                par_letras = {}
+                for i in range(len(seq) - 1):
+                    a, b = seq[i], seq[i+1]
+                    if not (a.isupper() and b.isupper()):
+                        continue
+                    par_letras[(a, b)] = par_letras.get((a, b), 0) + 1
+                
+                if par_letras:
+                    mais_comum_par = max(par_letras, key=par_letras.get)
+                    a, b = mais_comum_par
+                    mapa[a] = 't'
+                    mapa[b] = 'h'
+                    print(f"Par de letras mais comum: {a}{b} - 'th'")
+                
+                    for c in letras:
+                        if c[0] in mapa:
+                            c[0] = mapa[c[0]]
+                    binario = mapa_string(binario, mapa)
+                    palavras = [mapa_string(p, mapa) for p in palavras]
+                else:
+                    print("Nenhum par de letras relevante encontrado.")
+                
+            if ponteiro == 3:
+                c[0] = 't'
+                binario = binario.replace(mais_comum, "a")
+                palavras= [d.replace(mais_comum, "a") for d in palavras]
+            if ponteiro == 4:
+                c[0] = 'a'
+                binario = binario.replace(mais_comum, "o")
+                palavras= [d.replace(mais_comum, "o") for d in palavras]
+            if ponteiro == 5:
+                c[0] = 'o'
+                binario = binario.replace(mais_comum, "i")
+                palavras= [d.replace(mais_comum, "i") for d in palavras]
+            if ponteiro == 6:
+                c[0] = 'i'
+                binario = binario.replace(mais_comum, "n")
+                palavras= [d.replace(mais_comum, "n") for d in palavras]
+    print("Cifra após (2):\n", binario)
+ 
+############## (3) Com o dicionário de palavras mais populares, identificar letras baseando-se em palavras mais comuns
+     
+    def dicio_por_tamanho(caminho):
+        by_len = {}
+        with open(caminho, encoding="utf-8") as f:
+            for L in f:
+                w = L.strip().lower()
+                if not w:
+                    continue
+                by_len.setdefault(len(w), []).append(w)
+        return by_len
+     
+    def aplica_mapa(frase, mapa):
+        return "".join(mapa.get(c, c) for c in frase)
+     
+    def encaixa_com_mapa(palavra_cif, candidata, mapa):
+        local_map = {}
+        used_vals = set(mapa.values())
+        for cif_char, cand_char in zip(palavra_cif, candidata):
+            if cif_char.islower():
+                if cand_char != cif_char:
+                    return False
+            else:  
+                if cif_char in mapa:
+                    if mapa[cif_char] != cand_char:
+                        return False
+                else:
+                    if cif_char in local_map:
+                        if local_map[cif_char] != cand_char:
+                            return False
+                    else:
+                        if cand_char in used_vals:
+                            return False
+                        local_map[cif_char] = cand_char
+        return True
+     
+    def poss_para_palavra(palavra_cif, dicio_by_len, mapa):
+        if palavra_cif.islower():
+            return [palavra_cif] 
+        poss = dicio_by_len.get(len(palavra_cif), [])
+        return [w for w in poss if encaixa_com_mapa(palavra_cif, w, mapa)]
+     
+    def certezas(binario, dicio_by_len, mapa_inicial=None):
+        if mapa_inicial is None:
+            mapa_inicial = {}
+        mapa = dict(mapa_inicial)
+        palavras = binario.split()
+     
+        progresso = True
+        rodada = 0
+        while progresso:
+            rodada += 1
+            progresso = False
+            print(f"Rodada {rodada}")
+            poss_list = []
+            for p in palavras:
+                cand = poss_para_palavra(p, dicio_by_len, mapa)
+                poss_list.append(cand)
+                status = f"{p:>8} -{len(cand)} possibilidades"
+                if len(cand) <= 8:
+                   status += f": {cand}"
+                   print(status)
+     
+            for idx, cand in enumerate(poss_list):
+                p_cif = palavras[idx]
+                if len(cand) == 1 and any(ch.isupper() for ch in p_cif):
+                    chosen = cand[0]
+                    novas = {}
+                    conflitante = False
+                    for cif_char, plain_char in zip(p_cif, chosen):
+                        if cif_char.isupper():
+                            if cif_char in mapa:
+                                if mapa[cif_char] != plain_char:
+                                    conflitante = True
+                                    break
+                            else:
+                                if plain_char in mapear_valores(mapa) and cif_char not in mapa:
+                                    conflitante = True
+                                    break
+                                novas[cif_char] = plain_char
+                    if conflitante:
+                        print(f"  Ignorando {p_cif} como {chosen} por causa de conflitos")
+                        continue
+                    if novas:
+                        print(f"  Identificando {p_cif} como {chosen} e aplicando no mapa {novas}")
+                        mapa.update(novas)
+                        progresso = True
+                    else:
+                        pass
+        decif = aplica_mapa(binario, mapa)
+        return decif, mapa
+     
+    def mapear_valores(mapa):
+        return set(mapa.values())
+     
+    if __name__ == "__main__":
+        dicio_by_len = dicio_por_tamanho(Dic_Top)
+        mapa_inicial = mapa
+     
+        decifrada, mapa_final = certezas(binario, dicio_by_len, mapa_inicial)
+        print("Mapa em (3):\n", mapa_final)
+        print("Cifra após (3):\n", decifrada)
+     
+################# (4) Com base nas letras já encontradas, repetir o procedimento com um dicionário maior
+     
+    if __name__ == "__main__":
+        dicio_by_len = dicio_por_tamanho(Dic_Final)
+        mapa_inicial = mapa_final
+     
+        decifrada, mapa_final = certezas(binario, dicio_by_len, mapa_inicial)
+        print("Mapa em (4):\n", mapa_final)
+        print("Solução da cifra após (4):\n", decifrada)
+
+################# (5) Pontuação
+############ .
+    ultimo_numero = None
+    for ch in reversed(decifrada):
+        if ch.isdigit():
+            ultimo_numero = ch
+            break
+    if ultimo_numero is not None:
+        decifrada = decifrada.replace(ultimo_numero, '.')
+        print(f"Último número encontrado: {ultimo_numero}")
+    else:
+        print("Não há ponto na cifra.")
+############ ,
+    contagem = {}
+    for ch in decifrada:
+        if ch.isdigit():
+            contagem[ch] = contagem.get(ch, 0) + 1
+    if contagem:
+        numero_mais_comum = max(contagem, key=contagem.get)
+        decifrada = decifrada.replace(numero_mais_comum, ',')
+        print(f"Número mais frequente: {numero_mais_comum}")
+        print(f"Frase modificada: {decifrada}")
+    else:
+        print("Nenhum número encontrado na frase.")
+############ '
+    def substituir_numero_especial(decifrada):
+        chars = list(decifrada)
+        numero_alvo = None
+        for i in range(1, len(chars) - 1):
+            if chars[i].isdigit():
+                if chars[i - 1].lower() == 't' and chars[i + 1].lower() == 's':
+                    numero_alvo = chars[i]
+                    break
+        if numero_alvo:
+            decifrada = decifrada.replace(numero_alvo, "'")
+            print(f"Número identificado: {numero_alvo}")
+            print(f"Frase modificada: {decifrada}")
+            return decifrada
+        else:
+            print("Nenhum padrão 't[0-9]s' encontrado.")
+            return decifrada
+    substituir_numero_especial(decifrada)
+    
+################# (6) Avaliação do resultado
+
+    with open("words_alpha.txt", encoding="utf-8") as f:
+        dicionario = set(w.strip().lower() for w in f if w.strip())
+    def qualidade_texto(frase, dicionario):
+        palavras = re.findall(r"[a-z]+", frase.lower())    
+        if not palavras:
+            return 0.0, []  
+        desconhecidas = [p for p in palavras if p not in dicionario]
+        conhecidas = len(palavras) - len(desconhecidas)    
+        qualidade = conhecidas / len(palavras)
+        return qualidade, desconhecidas        
+    score, nao_encontradas = qualidade_texto(decifrada, dicionario)
+    print(f"Qualidade: {score:.2%}") 
+    print(f"Palavras fora do dicionário: {nao_encontradas}")    
+    ponteiro = ponteiro + 1
+
+end_time = time.perf_counter()
+elapsed_time = end_time - start_time
+print(f"Tempo de execução: {elapsed_time:.5f} segundos")
